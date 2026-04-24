@@ -1,0 +1,13 @@
+{
+    "valid": false,
+    "errors": [
+        {
+            "entryIndex": 0,
+            "message": "Invalid project_id: WRONG NUMBER"
+        },
+        {
+            "entryIndex": 1,
+            "message": "Invalid time range: from 00:00:00 to 00:00:00 represents an overlapping or invalid time entry"
+        }
+    ]
+}
