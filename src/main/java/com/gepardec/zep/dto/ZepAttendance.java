@@ -15,6 +15,7 @@ public record ZepAttendance (
     Integer projectId,
     Integer projectTaskId,
     Double duration,
+    String note,
     Boolean billable,
     String workLocation,
     Boolean workLocationIsProjectRelevant,
@@ -34,6 +35,7 @@ public record ZepAttendance (
              builder.projectId,
              builder.projectTaskId,
              builder.duration,
+             builder.note,
              builder.billable,
              builder.workLocation,
              builder.workLocationIsProjectRelevant,
@@ -65,6 +67,8 @@ public record ZepAttendance (
         private Integer projectTaskId;
         @JsonProperty("duration")
         private Double duration;
+        @JsonProperty("note")
+        private String note;
         @JsonProperty("billable")
         private Boolean billable;
 
@@ -120,6 +124,11 @@ public record ZepAttendance (
 
         public Builder duration(Double duration) {
             this.duration = duration;
+            return this;
+        }
+
+        public Builder note(String note) {
+            this.note = note;
             return this;
         }
 
