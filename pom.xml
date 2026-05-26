@@ -17,6 +17,7 @@
         <quarkus.platform.version>3.34.6</quarkus.platform.version>
         <skipITs>true</skipITs>
         <surefire-plugin.version>3.5.4</surefire-plugin.version>
+        <openapi-generator-maven-plugin.version>7.11.0</openapi-generator-maven-plugin.version>
     </properties>
 
     <dependencyManagement>
@@ -63,15 +64,44 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-                <groupId>io.quarkiverse.langchain4j</groupId>
-                <artifactId>quarkus-langchain4j-ai-gemini</artifactId>
-                <version>1.8.4</version>
+            <groupId>io.quarkiverse.langchain4j</groupId>
+            <artifactId>quarkus-langchain4j-ai-gemini</artifactId>
+            <version>1.8.4</version>
         </dependency>
         <dependency>
             <groupId>io.quarkiverse.langchain4j</groupId>
             <artifactId>quarkus-langchain4j-openai</artifactId>
             <version>1.8.4</version>
-
+        </dependency>
+        <!-- OpenAPI Generator dependencies -->
+        <dependency>
+            <groupId>org.openapitools</groupId>
+            <artifactId>jackson-databind-nullable</artifactId>
+            <version>0.2.6</version>
+        </dependency>
+        <dependency>
+            <groupId>io.swagger.core.v3</groupId>
+            <artifactId>swagger-annotations</artifactId>
+            <version>2.2.27</version>
+        </dependency>
+        <dependency>
+            <groupId>jakarta.validation</groupId>
+            <artifactId>jakarta.validation-api</artifactId>
+        </dependency>
+        <!-- JSON-B dependencies for generated code -->
+        <dependency>
+            <groupId>jakarta.json.bind</groupId>
+            <artifactId>jakarta.json.bind-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse</groupId>
+            <artifactId>yasson</artifactId>
+        </dependency>
+        <!-- Apache CXF multipart annotations for generated code -->
+        <dependency>
+            <groupId>org.apache.cxf</groupId>
+            <artifactId>cxf-rt-frontend-jaxrs</artifactId>
+            <version>4.0.5</version>
         </dependency>
     </dependencies>
 
@@ -82,6 +112,35 @@
                 <artifactId>quarkus-maven-plugin</artifactId>
                 <version>${quarkus.platform.version}</version>
                 <extensions>true</extensions>
+            </plugin>
+            <plugin>
+                <groupId>org.openapitools</groupId>
+                <artifactId>openapi-generator-maven-plugin</artifactId>
+                <version>${openapi-generator-maven-plugin.version}</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>generate</goal>
+                        </goals>
+                        <configuration>
+                            <inputSpec>https://developer.zep.de/openapi.yaml</inputSpec>
+                            <generatorName>java</generatorName>
+                            <library>microprofile</library>
+                            <apiPackage>com.gepardec.zep.api</apiPackage>
+                            <modelPackage>com.gepardec.zep.model</modelPackage>
+                            <invokerPackage>com.gepardec.zep.client</invokerPackage>
+                            <generateModelTests>false</generateModelTests>
+                            <generateApiTests>false</generateApiTests>
+                            <skipValidateSpec>true</skipValidateSpec>
+                            <configOptions>
+                                <useJakartaEe>true</useJakartaEe>
+                                <dateLibrary>java8</dateLibrary>
+                                <sourceFolder>src/gen/java</sourceFolder>
+                                <microprofileRestClientVersion>3.0</microprofileRestClientVersion>
+                            </configOptions>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
             <plugin>
                 <artifactId>maven-compiler-plugin</artifactId>

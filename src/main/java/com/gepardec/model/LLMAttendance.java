@@ -1,7 +1,7 @@
 package com.gepardec.model;
 
-import com.gepardec.zep.dto.ZepAttendance;
+import com.gepardec.zep.model.Attendance;
 
 public class LLMAttendance {
-    ZepAttendance zepAttendances;
+    Attendance zepAttendances;
 }

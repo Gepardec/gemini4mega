@@ -1,55 +1,63 @@
 package com.gepardec.zep.service;
 
 
-import com.gepardec.zep.dto.ZepAttendance;
+import com.gepardec.zep.model.Attendance;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
 
 public class PseudonymizationService {
     Map<Integer, String> pseudonymizedUserIds = new HashMap<>();
     Random random = new Random();
 
-    public List<ZepAttendance> pseudonymize(List<ZepAttendance> attendances) {
+    public List<Attendance> pseudonymize(List<Attendance> attendances) {
 
-        List<ZepAttendance> pseudonymizedAttendances = new ArrayList<>();
+        List<Attendance> pseudonymizedAttendances = new ArrayList<>();
 
         attendances.forEach(attendance -> {
             Integer randomId;
 
-            if (!pseudonymizedUserIds.containsValue(attendance.employeeId())) {
+            if (!pseudonymizedUserIds.containsValue(attendance.getEmployeeId())) {
                 randomId = random.nextInt();
-                pseudonymizedUserIds.put(randomId, attendance.employeeId());
+                pseudonymizedUserIds.put(randomId, attendance.getEmployeeId());
 
-            }
-            else {
+            } else {
                 //TODO: Nächstes mal hier weitermachen
                 //randomId = pseudonymizedUserIds.(attendance.employeeId());
                 randomId = random.nextInt(); //temp solution
             }
 
-            pseudonymizedAttendances.add(ZepAttendance.builder()
-                    .id(attendance.id())
-                    .date(attendance.date())
-                    .from(attendance.from())
-                    .to(attendance.to())
-                    .employeeId(randomId.toString())
-                    .projectId(attendance.projectId())
-                    .projectTaskId(attendance.projectTaskId())
-                    .duration(attendance.duration())
-                    .note(attendance.note())
-                    .billable(attendance.billable())
-                    .workLocation(attendance.workLocation())
-                    .workLocationIsProjectRelevant(attendance.workLocationIsProjectRelevant())
-                    .workLocation(attendance.activity())
-                    .vehicle(attendance.vehicle())
-                    .build());
-
+            pseudonymizedAttendances.add(build(attendance, randomId));
         });
 
         return attendances;
     }
 
-    public List<ZepAttendance> unpseudonymize(List<ZepAttendance> attendances) {
+    public List<Attendance> unpseudonymize(List<Attendance> attendances) {
         return null;
+    }
+
+    private Attendance build(Attendance attendance, Integer randomId) {
+        Attendance pseudonymizedAttendance = new Attendance();
+
+        attendance.id(attendance.getId());
+        attendance.date(attendance.getDate());
+        attendance.from(attendance.getFrom());
+        attendance.to(attendance.getTo());
+        attendance.employeeId(randomId.toString());
+        attendance.projectId(attendance.getProjectId());
+        attendance.projectTaskId(attendance.getProjectTaskId());
+        attendance.duration(attendance.getDuration());
+        attendance.note(attendance.getNote());
+        attendance.billable(attendance.getBillable());
+        attendance.workLocationId(attendance.getWorkLocationId());
+        attendance.workLocationIsProjectRelevant(attendance.getWorkLocationIsProjectRelevant());
+        attendance.activityId(attendance.getActivityId());
+        attendance.vehicleId(attendance.getVehicleId());
+
+        return pseudonymizedAttendance;
     }
 }

@@ -1,47 +1,53 @@
 package com.gepardec.zep.service;
 
-import com.gepardec.zep.client.ZepAttendanceRestClient;
-import com.gepardec.zep.dto.ZepAttendance;
-import com.gepardec.zep.dto.ZepResponse;
-import io.smallrye.mutiny.Multi;
+import com.gepardec.zep.api.AttendancesApi;
+import com.gepardec.zep.model.Attendance;
+import com.gepardec.zep.model.AttendancesListResponse;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.ws.rs.BadRequestException;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
 
 @ApplicationScoped
 public class AttendanceService {
+
+    private static final Logger log = LoggerFactory.getLogger(AttendanceService.class);
+
+    private static final int MAX_LIMIT = 100;
+
+    @Inject
     @RestClient
-    private ZepAttendanceRestClient zepAttendanceRestClient;
+    AttendancesApi attendancesApi;
 
-//    @Inject
-//    Logger logger;
+    @Inject
+    ListResponseService listResponseService;
 
-    public List<ZepAttendance> getBillableAttendancesForUserAndMonth(String username, YearMonth payrollMonth) {
-        return getAttendanceForUserAndMonth(username, payrollMonth).stream()
-                .filter(ZepAttendance::billable)
-                .toList();
+
+    public List<Attendance> getAttendanceForUserAndMonth(String user, YearMonth payrollMonth) {
+
+        LocalDate startDate = payrollMonth.atDay(1);
+        LocalDate endDate = payrollMonth.atEndOfMonth();
+
+        if (user != null && !user.isEmpty()) {
+            try {
+                log.info(String.format("Fetching all attendances: Start: %s, End: %s, UserId: %s", startDate, endDate, user));
+                return listResponseService.fetchAll(
+                        () -> attendancesApi.attendancesGet(startDate, endDate, user, MAX_LIMIT),
+                        AttendancesListResponse::getData,
+                        response -> response.getMeta() != null ? response.getMeta().getTotal() : null);
+            } catch (Exception e) {
+                log.error("Error fetching attendances", e);
+                throw new BadRequestException(e);
+            }
+        } else {
+            throw new BadRequestException("No user provided");
+        }
     }
 
-    //Return the attendances for a user for a given month. The month in which the date is located determines the month to be queried.
-    public List<ZepAttendance> getAttendanceForUserAndMonth(String username, YearMonth payrollMonth) {
-        String startDate = payrollMonth.atDay(1).toString();
-        String endDate = payrollMonth.atEndOfMonth().toString();
-
-        return Multi.createBy().repeating()
-                .uni(AtomicInteger::new, page ->
-                        zepAttendanceRestClient.getAttendance(startDate, endDate, username, page.incrementAndGet())
-                                //.onFailure().invoke(ex -> logger.warn("Error retrieving attendances from ZEP", ex))
-                )
-                .whilst(ZepResponse::hasNext)
-                .map(ZepResponse::data)
-                .onItem().<ZepAttendance>disjoint()
-                .collect().asList()
-                .await().indefinitely();
-    }
 }
-
