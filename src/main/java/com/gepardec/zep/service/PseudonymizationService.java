@@ -1,63 +1,73 @@
 package com.gepardec.zep.service;
 
 
-import com.gepardec.zep.model.Attendance;
+import com.google.common.collect.BiMap;
+import com.google.common.collect.HashBiMap;
+import com.google.common.collect.Maps;
+import jakarta.enterprise.context.ApplicationScoped;
+import org.jboss.logging.Logger;
 
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Random;
+import java.util.Objects;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 
+@ApplicationScoped
 public class PseudonymizationService {
-    Map<Integer, String> pseudonymizedUserIds = new HashMap<>();
-    Random random = new Random();
+    private static final Logger LOG = Logger.getLogger(PseudonymizationService.class);
 
-    public List<Attendance> pseudonymize(List<Attendance> attendances) {
+    private final BiMap<Integer, String> pseudonymizedUserIds = Maps.synchronizedBiMap(HashBiMap.create());
 
-        List<Attendance> pseudonymizedAttendances = new ArrayList<>();
+    private final AtomicInteger idCounter = new AtomicInteger(0);
 
-        attendances.forEach(attendance -> {
-            Integer randomId;
+    public <T> List<T> pseudonymize(List<T> entries, Function<T, String> idGetter, PseudonymizerFunction<T> pseudonymizeFunction) {
+        if (entries == null || idGetter == null || pseudonymizeFunction == null) {
+            throw new IllegalArgumentException("Parameters must not be null");
+        }
 
-            if (!pseudonymizedUserIds.containsValue(attendance.getEmployeeId())) {
-                randomId = random.nextInt();
-                pseudonymizedUserIds.put(randomId, attendance.getEmployeeId());
+        return entries.stream()
+                .map(entry -> {
+                    String id = idGetter.apply(entry);
+                    if (id == null) {
+                        LOG.error("ID must not be null. Entry will be skipped.");
+                        return null;
+                    }
+                    if (!pseudonymizedUserIds.containsValue(id)) {
+                        pseudonymizedUserIds.put(idCounter.getAndIncrement(), id);
+                    }
 
-            } else {
-                //TODO: Nächstes mal hier weitermachen
-                //randomId = pseudonymizedUserIds.(attendance.employeeId());
-                randomId = random.nextInt(); //temp solution
-            }
-
-            pseudonymizedAttendances.add(build(attendance, randomId));
-        });
-
-        return attendances;
+                    Integer pseudonymizedId = pseudonymizedUserIds.inverse().get(id);
+                    return pseudonymizeFunction.apply(entry, String.valueOf(pseudonymizedId));
+                })
+                .toList();
     }
 
-    public List<Attendance> unpseudonymize(List<Attendance> attendances) {
-        return null;
+    public <T> List<T> unpseudonymize(List<T> entries, Function<T, String> idGetter, PseudonymizerFunction<T> unpseudonymizeFunction) {
+        if (entries == null || idGetter == null || unpseudonymizeFunction == null) {
+            throw new IllegalArgumentException("Parameters must not be null");
+        }
+
+        return entries.stream()
+                .map(entry -> {
+                    try {
+                        int pseudonymizedId = Integer.parseInt(idGetter.apply(entry));
+                        if (pseudonymizedUserIds.containsKey(pseudonymizedId)) {
+                            String originalId = pseudonymizedUserIds.get(pseudonymizedId);
+                            return unpseudonymizeFunction.apply(entry, originalId);
+                        } else {
+                            LOG.warnf("Unable to unpseudonymize entry with pseudonymized ID: %d. Entry will be skipped.", pseudonymizedId);
+                            return null;
+                        }
+                    } catch (NumberFormatException e) {
+                        LOG.error("Invalid pseudonymized ID format for entry. Entry will be skipped.", e);
+                        return null;
+                    }
+                })
+                .filter(Objects::nonNull)
+                .toList();
     }
 
-    private Attendance build(Attendance attendance, Integer randomId) {
-        Attendance pseudonymizedAttendance = new Attendance();
-
-        attendance.id(attendance.getId());
-        attendance.date(attendance.getDate());
-        attendance.from(attendance.getFrom());
-        attendance.to(attendance.getTo());
-        attendance.employeeId(randomId.toString());
-        attendance.projectId(attendance.getProjectId());
-        attendance.projectTaskId(attendance.getProjectTaskId());
-        attendance.duration(attendance.getDuration());
-        attendance.note(attendance.getNote());
-        attendance.billable(attendance.getBillable());
-        attendance.workLocationId(attendance.getWorkLocationId());
-        attendance.workLocationIsProjectRelevant(attendance.getWorkLocationIsProjectRelevant());
-        attendance.activityId(attendance.getActivityId());
-        attendance.vehicleId(attendance.getVehicleId());
-
-        return pseudonymizedAttendance;
+    public interface PseudonymizerFunction<T> {
+        T apply(T t, String employeeId);
     }
 }
