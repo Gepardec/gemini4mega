@@ -20,7 +20,7 @@ public class PseudonymizationService {
 
     private final AtomicInteger idCounter = new AtomicInteger(0);
 
-    public <T> List<T> pseudonymize(List<T> entries, Function<T, String> idGetter, PseudonymizerFunction<T> pseudonymizeFunction) {
+    public <T, R> List<R> pseudonymize(List<T> entries, Function<T, String> idGetter, PseudonymizerFunction<T, R> pseudonymizeFunction) {
         if (entries == null || idGetter == null || pseudonymizeFunction == null) {
             throw new IllegalArgumentException("Parameters must not be null");
         }
@@ -42,7 +42,7 @@ public class PseudonymizationService {
                 .toList();
     }
 
-    public <T> List<T> unpseudonymize(List<T> entries, Function<T, String> idGetter, PseudonymizerFunction<T> unpseudonymizeFunction) {
+    public <T, R> List<R> unpseudonymize(List<T> entries, Function<T, String> idGetter, PseudonymizerFunction<T, R> unpseudonymizeFunction) {
         if (entries == null || idGetter == null || unpseudonymizeFunction == null) {
             throw new IllegalArgumentException("Parameters must not be null");
         }
@@ -67,7 +67,7 @@ public class PseudonymizationService {
                 .toList();
     }
 
-    public interface PseudonymizerFunction<T> {
-        T apply(T t, String employeeId);
+    public interface PseudonymizerFunction<T, R> {
+        R apply(T t, String employeeId);
     }
 }

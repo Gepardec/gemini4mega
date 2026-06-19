@@ -3,6 +3,7 @@ package com.gepardec.zep.service;
 import com.gepardec.zep.api.EmployeesApi;
 import com.gepardec.zep.model.EmployeeProject;
 import com.gepardec.zep.model.EmployeeProjectsListResponse;
+import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.BadRequestException;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
@@ -13,6 +14,7 @@ import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.List;
 
+@ApplicationScoped
 public class ProjectService {
 
     private static final Logger log = LoggerFactory.getLogger(ProjectService.class);
