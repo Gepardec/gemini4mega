@@ -28,7 +28,12 @@ public class AttendanceValidationAgent {
 
     public String checkSingleMonth(String username, YearMonth payrollMonth) {
         List<Attendance> attendancesOfUser = attendanceService.getAttendanceForUserAndMonth(username, payrollMonth);
-        System.out.println(attendancesOfUser.toString());
+        System.out.println( "Alle Bcuchungen"+ attendancesOfUser.size());
+        System.out.println( "Alle Bcuchungen"+ attendancesOfUser.getFirst().getEmployeeId());
+        System.out.println( "Alle Bcuchungen"+ attendancesOfUser.getFirst().getId());
+        System.out.println( "Alle Bcuchungen"+ attendancesOfUser.getFirst().getFrom());
+        System.out.println( "Alle Bcuchungen"+ attendancesOfUser.getFirst().getNote());
+        System.out.println( "Alle Bcuchungen"+ attendancesOfUser.get(10).getNote());
 
 
         return promptService.prompt(pseudonymizationService.pseudonymize(attendancesOfUser, Attendance::getEmployeeId, this::createAttendance).toString());
@@ -37,20 +42,20 @@ public class AttendanceValidationAgent {
     private Attendance createAttendance(Attendance attendance, String id) {
         Attendance pseudonymizedAttendance = new Attendance();
 
-        attendance.id(attendance.getId());
-        attendance.date(attendance.getDate());
-        attendance.from(attendance.getFrom());
-        attendance.to(attendance.getTo());
-        attendance.employeeId(id);
-        attendance.projectId(attendance.getProjectId());
-        attendance.projectTaskId(attendance.getProjectTaskId());
-        attendance.duration(attendance.getDuration());
-        attendance.note(attendance.getNote());
-        attendance.billable(attendance.getBillable());
-        attendance.workLocationId(attendance.getWorkLocationId());
-        attendance.workLocationIsProjectRelevant(attendance.getWorkLocationIsProjectRelevant());
-        attendance.activityId(attendance.getActivityId());
-        attendance.vehicleId(attendance.getVehicleId());
+        pseudonymizedAttendance.id(attendance.getId());
+        pseudonymizedAttendance.date(attendance.getDate());
+        pseudonymizedAttendance.from(attendance.getFrom());
+        pseudonymizedAttendance.to(attendance.getTo());
+        pseudonymizedAttendance.employeeId(id);
+        pseudonymizedAttendance.projectId(attendance.getProjectId());
+        pseudonymizedAttendance.projectTaskId(attendance.getProjectTaskId());
+        pseudonymizedAttendance.duration(attendance.getDuration());
+        pseudonymizedAttendance.note(attendance.getNote());
+        pseudonymizedAttendance.billable(attendance.getBillable());
+        pseudonymizedAttendance.workLocationId(attendance.getWorkLocationId());
+        pseudonymizedAttendance.workLocationIsProjectRelevant(attendance.getWorkLocationIsProjectRelevant());
+        pseudonymizedAttendance.activityId(attendance.getActivityId());
+        pseudonymizedAttendance.vehicleId(attendance.getVehicleId());
 
         return pseudonymizedAttendance;
     }

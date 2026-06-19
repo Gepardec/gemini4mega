@@ -14,6 +14,7 @@ import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.List;
 
+
 @ApplicationScoped
 public class AttendanceService {
 
@@ -37,10 +38,12 @@ public class AttendanceService {
         if (user != null && !user.isEmpty()) {
             try {
                 log.info(String.format("Fetching all attendances: Start: %s, End: %s, UserId: %s", startDate, endDate, user));
-                return listResponseService.fetchAll(
+                List<Attendance> attendances = listResponseService.fetchAll(
                         () -> attendancesApi.attendancesGet(startDate, endDate, user, MAX_LIMIT),
                         AttendancesListResponse::getData,
                         response -> response.getMeta() != null ? response.getMeta().getTotal() : null);
+                attendances.forEach(a -> a.employeeId(user));
+                return attendances;
             } catch (Exception e) {
                 log.error("Error fetching attendances", e);
                 throw new BadRequestException(e);
