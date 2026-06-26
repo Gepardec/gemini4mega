@@ -60,3 +60,29 @@ If you want to learn more about building native executables, please consult <htt
 Easily start your REST Web Services
 
 [Related guide section...](https://quarkus.io/guides/getting-started-reactive#reactive-jax-rs-resources)
+
+
+## Configuration
+
+you need a .env file in the root directory with the following content:
+
+```text
+ZEP_REST_TOKEN=<token>
+OPEN_AI_TOKEN=<token>
+```
+
+## build image, run container
+
+build:
+```shell script
+podman build -t gemini4mega .
+```
+
+run:
+```shell script
+podman run -p 8080:8080 --env-file .env gemini4mega
+```
+
+## Test Rest API
+
+call http://localhost:8080/checking/082-tmeindl/2026/05 or other username and date
