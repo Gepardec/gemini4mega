@@ -11,7 +11,8 @@ public interface PromptService {
     @UserMessage(""" 
             Here are the time entries: {entries}
             """)
-    String prompt(String entries);
+    @SystemMessage("{systemPrompt}")
+    String prompt(String entries, String systemPrompt);
 
 
 }

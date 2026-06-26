@@ -1,5 +1,6 @@
 package com.gepardec.agent;
 
+import com.gepardec.agent.util.SystemPromptLoader;
 import com.gepardec.llm.service.PromptService;
 import com.gepardec.model.LLMAttendance;
 import com.gepardec.zep.model.Attendance;
@@ -39,6 +40,9 @@ public class AttendanceValidationAgent {
     @Inject
     ProjectTaskService projectTaskService;
 
+    @Inject
+    SystemPromptLoader systemPromptLoader;
+
     public String checkSingleMonth(String username, YearMonth payrollMonth) {
         List<Attendance> attendancesOfUser = attendanceService.getAttendanceForUserAndMonth(username, payrollMonth);
         Set<Integer> projectIds = attendancesOfUser.stream()
@@ -63,7 +67,7 @@ public class AttendanceValidationAgent {
 
         JsonbConfig jsonbConfig = new JsonbConfig().withNullValues(true);
         String entriesJson = JsonbBuilder.create(jsonbConfig).toJson(llmAttendances);
-        return promptService.prompt(entriesJson);
+        return promptService.prompt(entriesJson, systemPromptLoader.getSystemPrompt());
     }
 
     private Map<Integer, String> resolveProjectNames(String username, YearMonth payrollMonth, Set<Integer> projectIds) {

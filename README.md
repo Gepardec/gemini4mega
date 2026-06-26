@@ -69,6 +69,7 @@ you need a .env file in the root directory with the following content:
 ```text
 ZEP_REST_TOKEN=<token>
 OPEN_AI_TOKEN=<token>
+SYS_PROMPT_PATH=rules-for-entries.txt
 ```
 
 ## build image, run container
