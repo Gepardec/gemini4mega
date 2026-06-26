@@ -12,12 +12,13 @@ public class LLMAttendance {
     private BigDecimal duration;
     private String employeeId;
     private String project;
+    private String projectDescription;
     private String projectTask;
     private String note;
     private Boolean billable;
-    private String workLocationId;
-    private String activityId;
-    private Integer subtaskId;
+    private String workLocation;
+    private String activity;
+    private String subtask;
     private Boolean workLocationIsProjectRelevant;
     private String start;
     private String destination;
@@ -114,6 +115,19 @@ public class LLMAttendance {
         return this;
     }
 
+    public String getProjectDescription() {
+        return projectDescription;
+    }
+
+    public void setProjectDescription(String projectDescription) {
+        this.projectDescription = projectDescription;
+    }
+
+    public LLMAttendance projectDescription(String projectDescription) {
+        this.projectDescription = projectDescription;
+        return this;
+    }
+
     public String getProjectTask() {
         return projectTask;
     }
@@ -153,42 +167,42 @@ public class LLMAttendance {
         return this;
     }
 
-    public String getWorkLocationId() {
-        return workLocationId;
+    public String getWorkLocation() {
+        return workLocation;
     }
 
-    public void setWorkLocationId(String workLocationId) {
-        this.workLocationId = workLocationId;
+    public void setWorkLocation(String workLocation) {
+        this.workLocation = workLocation;
     }
 
-    public LLMAttendance workLocationId(String workLocationId) {
-        this.workLocationId = workLocationId;
+    public LLMAttendance workLocation(String workLocation) {
+        this.workLocation = workLocation;
         return this;
     }
 
-    public String getActivityId() {
-        return activityId;
+    public String getActivity() {
+        return activity;
     }
 
-    public void setActivityId(String activityId) {
-        this.activityId = activityId;
+    public void setActivity(String activity) {
+        this.activity = activity;
     }
 
-    public LLMAttendance activityId(String activityId) {
-        this.activityId = activityId;
+    public LLMAttendance activity(String activity) {
+        this.activity = activity;
         return this;
     }
 
-    public Integer getSubtaskId() {
-        return subtaskId;
+    public String getSubtask() {
+        return subtask;
     }
 
-    public void setSubtaskId(Integer subtaskId) {
-        this.subtaskId = subtaskId;
+    public void setSubtask(String subtask) {
+        this.subtask = subtask;
     }
 
-    public LLMAttendance subtaskId(Integer subtaskId) {
-        this.subtaskId = subtaskId;
+    public LLMAttendance subtask(String subtask) {
+        this.subtask = subtask;
         return this;
     }
 
