@@ -5,7 +5,6 @@ import dev.langchain4j.service.UserMessage;
 import io.quarkiverse.langchain4j.RegisterAiService;
 
 @RegisterAiService
-@SystemMessage(fromResource = "rules-for-entries.txt")
 public interface PromptService {
 
     @UserMessage(""" 
