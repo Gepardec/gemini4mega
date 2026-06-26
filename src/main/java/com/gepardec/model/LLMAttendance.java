@@ -12,6 +12,7 @@ public class LLMAttendance {
     private BigDecimal duration;
     private String employeeId;
     private String project;
+    private String projectDescription;
     private String projectTask;
     private String note;
     private Boolean billable;

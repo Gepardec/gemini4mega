@@ -26,40 +26,29 @@ You receive a JSON array of time entries. Each entry has these fields:
 - `employeeId`: pseudonymized employee identifier.
 - `project`: human-readable project name.
 - `projectTask`: human-readable task name within the project.
+- `projectDescription`: FREE TEXT description of the project, maintained in ZEP. Explains
+  what the project is for (e.g. "Nicht verrechenbare Leistungen", "UX Design/ FTA Editor",
+  "Sammelprojekt OÖGKK für Reststunden"). Use it to judge whether the note and billability
+  fit the project. May be null — if so, do not assume the project's nature.
 - `note`: FREE GERMAN TEXT written by the employee. This is your main signal.
 - `billable`: whether the entry is billable (boolean).
-- `workLocationId`: a CODE for the work location (see "Code legend"). May be null.
-- `activityId`: a CODE for the activity type (see "Code legend").
-- `subtaskId`: numeric subtask id (rarely meaningful on its own).
+- `workLocation`: human-readable TEXT label for the work location (e.g. "Homeoffice",
+  "Büro", "Beim Kunden", "Unterwegs"). May be null.
+- `activity`: human-readable TEXT label for the activity type (e.g. "Entwicklung",
+  "Beratung", "Reise", "Schulung"). May be null.
+- `subtask`: human-readable TEXT label for the subtask (rarely meaningful on its own, but
+  may add context to the note/task). May be null.
 - `workLocationIsProjectRelevant`: boolean hint about the location.
 - `start`, `destination`: free-text travel origin/target (often null).
-- `directionOfTravel`: a CODE/string for travel direction (see "Code legend").
+- `directionOfTravel`: human-readable TEXT label for travel direction (e.g. "Hinfahrt",
+  "Rückfahrt", "Anreise", "Abreise"). May be null.
 
 Indices are zero-based: the first entry in the array is index 0.
 
-# Code legend
-
-`workLocationId`, `activityId`, and `directionOfTravel` are codes, not labels. Use the
-tables below to interpret them.
-
-## workLocation codes
-| code | meaning |
-|------|---------|
-| <FILL IN> | <FILL IN> |
-
-## activity codes
-| code | meaning |
-|------|---------|
-| <FILL IN> | <FILL IN> |
-
-## directionOfTravel values
-| value | meaning |
-|-------|---------|
-| <FILL IN> | <FILL IN> |
-
-IMPORTANT: If a code or value is NOT listed in these tables, do not guess its meaning.
-For that field, reason only from the free-text `note`, and downgrade any resulting
-finding to severity "possible".
+IMPORTANT: `workLocation`, `activity`, and `directionOfTravel` are now plain text labels,
+not codes — read them directly. If one of these fields is null or empty, do not guess its
+meaning; reason only from the free-text `note`, and downgrade any resulting finding to
+severity "possible".
 
 # General reasoning principles
 
@@ -77,17 +66,18 @@ finding to severity "possible".
 Severity meaning: "likely" = probably a real mistake; "possible" = worth human review.
 
 ## LOC — Location consistency
-- LOC-01 (likely): The note contradicts the work-location meaning (e.g. note says
-  "Homeoffice" while the location is at a customer/on the road; or "Büro" while the
-  location means away). If `workLocationId` is null or not in the legend, reason from the
-  note only and downgrade to "possible".
+- LOC-01 (likely): The note contradicts the `workLocation` label (e.g. note says
+  "Homeoffice" while `workLocation` is "Beim Kunden"/"Unterwegs"; or "Büro" while the
+  label means away). If `workLocation` is null or empty, reason from the note only and
+  downgrade to "possible".
 - LOC-02 (possible): The note names a different place than the location field implies.
 
 ## TRV — Travel / journey logic
-- TRV-01 (likely): `directionOfTravel` contradicts the note — e.g. "Rückfahrt" on an
-  outbound leg, "Anreise" after already being at the destination, "Abreise" before any stay.
+- TRV-01 (likely): The `directionOfTravel` label contradicts the note — e.g. note says
+  "Rückfahrt" while `directionOfTravel` is "Hinfahrt", "Anreise" after already being at the
+  destination, "Abreise" before any stay.
 - TRV-02 (possible): A travel note with no `start`/`destination`, or `start`/`destination`
-  set while the note/activity shows no travel.
+  set while the note/`activity` shows no travel.
 - TRV-03 (possible): `start` equals `destination` on a travel entry.
 
 ## CP — Copy-paste / stale references
@@ -102,8 +92,16 @@ Severity meaning: "likely" = probably a real mistake; "possible" = worth human r
 ## FIT — Description fits project / task / activity
 - FIT-01 (possible): The work description does not logically fit the `project`,
   `projectTask`, location, or travel situation.
-- FIT-02 (possible): The note describes a clearly different activity than the `activityId`
-  legend meaning (only when the code is in the legend).
+- FIT-02 (possible): The note describes a clearly different activity than the `activity`
+  label (only when `activity` is present and non-empty).
+
+## PROJ — Project assignment (uses projectDescription)
+- PROJ-01 (likely): The note describes work that clearly belongs to a different kind of
+  project than the booked one, judged against `projectDescription` (e.g. billable customer
+  implementation booked on a project described as "nicht verrechenbar/intern", or internal
+  admin booked on a customer project). Apply only when `projectDescription` is present.
+- PROJ-02 (possible): The note is generic and does not obviously fit the `projectDescription`,
+  but a mismatch cannot be confirmed. Worth human review.
 
 ## VAG — Vagueness
 - VAG-01 (possible): The note is too vague to be plausible when surrounding entries are
@@ -113,6 +111,15 @@ Severity meaning: "likely" = probably a real mistake; "possible" = worth human r
 ## PRIV — Private activity as work time
 - PRIV-01 (likely): A private/non-work activity booked as working time (e.g. "Arzt privat",
   "Einkaufen") unless the activity/process clearly allows it.
+
+## BILL — Billability plausibility
+- BILL-01 (likely): The `projectDescription` indicates non-billable work (e.g. contains
+  "nicht verrechenbar", "intern", "Reststunden", "Puffer") but `billable` is true — or the
+  description indicates clear billable customer work while `billable` is false.
+- BILL-02 (possible): The note describes internal / non-customer work (e.g. "interne
+  Abstimmung", "Recruiting", "Urlaub", "interne Schulung") but `billable` is true, where
+  the project context does not justify it. If the note itself already contradicts the
+  `projectDescription`, prefer PROJ-01 over BILL-02 to avoid double-reporting.
 
 ## MEET — Meeting / workshop / training plausibility
 - MEET-01 (possible): A meeting/workshop/training/appointment implausible for its time,
@@ -171,8 +178,7 @@ Rules for the output:
 # Examples
 
 Example A — clear detection (outbound leg with a return-trip note):
-(For this example, assume the directionOfTravel legend maps "OUTBOUND" to a Hinfahrt / outbound trip.)
-Input (excerpt): [{"id":1,"date":"2024-07-20T00:00:00Z","note":"Rückfahrt vom Kunden","directionOfTravel":"OUTBOUND","project":"Kunde X"}]
+Input (excerpt): [{"id":1,"date":"2024-07-20T00:00:00Z","note":"Rückfahrt vom Kunden","directionOfTravel":"Hinfahrt","project":"Kunde X"}]
 Output:
 {"valid":false,"errors":[{"entryIndex":0,"ruleId":"TRV-01","category":"TRV","severity":"likely","message":"Notiz beschreibt eine Rückfahrt, die Fahrtrichtung ist jedoch eine Hinfahrt."}]}
 
