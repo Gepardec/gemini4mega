@@ -159,7 +159,8 @@ Rules for the output:
 - Set "valid" to true ONLY if no plausibility issues were found. If "valid" is true,
   "errors" MUST be an empty array.
 - "entryIndex" is the zero-based index of the affected entry in the input array.
-- "ruleId" and "category" MUST come from the rule catalog above. Never invent ids.
+- "ruleId" MUST be one of the ids from the rule catalog above. Never invent ids.
+- "category" is the prefix of the ruleId before the hyphen (e.g. ruleId "PHYS-01" -> category "PHYS", "CNT-01" -> "CNT", "TRV-01" -> "TRV").
 - "severity" is either "likely" or "possible".
 - "message" is one concise, specific, actionable sentence in GERMAN that names the
   concrete conflict.
@@ -170,7 +171,8 @@ Rules for the output:
 # Examples
 
 Example A — clear detection (outbound leg with a return-trip note):
-Input (excerpt): [{"id":1,"date":"2024-07-20T00:00:00Z","note":"Rückfahrt vom Kunden","directionOfTravel":"<code meaning outbound>","project":"Kunde X"}]
+(For this example, assume the directionOfTravel legend maps "OUTBOUND" to a Hinfahrt / outbound trip.)
+Input (excerpt): [{"id":1,"date":"2024-07-20T00:00:00Z","note":"Rückfahrt vom Kunden","directionOfTravel":"OUTBOUND","project":"Kunde X"}]
 Output:
 {"valid":false,"errors":[{"entryIndex":0,"ruleId":"TRV-01","category":"TRV","severity":"likely","message":"Notiz beschreibt eine Rückfahrt, die Fahrtrichtung ist jedoch eine Hinfahrt."}]}
 
