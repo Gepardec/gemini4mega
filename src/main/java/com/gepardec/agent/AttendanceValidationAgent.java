@@ -3,12 +3,14 @@ package com.gepardec.agent;
 import com.gepardec.agent.util.SystemPromptLoader;
 import com.gepardec.llm.service.PromptService;
 import com.gepardec.model.LLMAttendance;
+import com.gepardec.model.ProjectMetadata;
 import com.gepardec.zep.model.Attendance;
 import com.gepardec.zep.model.EmployeeProject;
 import com.gepardec.zep.service.ActivityService;
 import com.gepardec.zep.service.AttendanceService;
 import com.gepardec.zep.service.ProjectDescriptionService;
 import com.gepardec.zep.service.PseudonymizationService;
+import com.gepardec.zep.service.ProjectMetadataService;
 import com.gepardec.zep.service.ProjectService;
 import com.gepardec.zep.service.ProjectTaskService;
 import com.gepardec.zep.service.SubtaskService;
@@ -59,6 +61,10 @@ public class AttendanceValidationAgent {
 
     @Inject
     ProjectDescriptionService projectDescriptionService;
+
+    @Inject
+    ProjectMetadataService projectMetadataService;
+
 
     record AttendanceLookups(
             Map<Integer, String> projectNames,
@@ -117,7 +123,16 @@ public class AttendanceValidationAgent {
 
         JsonbConfig jsonbConfig = new JsonbConfig().withNullValues(true);
         String entriesJson = JsonbBuilder.create(jsonbConfig).toJson(llmAttendances);
-        return promptService.prompt(entriesJson, systemPromptLoader.getSystemPrompt());
+        Set<String> monthProjectNames = llmAttendances.stream()
+                .map(LLMAttendance::getProject)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        List<ProjectMetadata> projectMetadata = projectMetadataService.getMetadataForProjects(monthProjectNames);
+        String projectContext = renderProjectContext(projectMetadata);
+        //return promptService.prompt(entriesJson, systemPromptLoader.getSystemPrompt());
+
+        return promptService.prompt(entriesJson, projectContext);
     }
 
     private Map<Integer, String> resolveProjectNames(String username, YearMonth payrollMonth, Set<Integer> projectIds) {
@@ -188,5 +203,40 @@ public class AttendanceValidationAgent {
                 .start(attendance.getStart())
                 .destination(attendance.getDestination())
                 .directionOfTravel(attendance.getDirectionOfTravel());
+    }
+
+    private String renderProjectContext(List<ProjectMetadata> metadataEntries) {
+        if (metadataEntries == null || metadataEntries.isEmpty()) {
+            return "";
+        }
+
+        StringBuilder context = new StringBuilder();
+        for (ProjectMetadata metadata : metadataEntries) {
+            context.append("Project: ").append(metadata.getName()).append('\n');
+            appendOptionalLine(context, "Description", metadata.getDescription());
+            appendOptionalLine(context, "Tech stack", metadata.getTechStack());
+            appendOptionalList(context, "Booking rules", metadata.getBookingRules());
+            appendOptionalList(context, "Common mistakes", metadata.getCommonMistakes());
+            context.append('\n');
+        }
+        return context.toString().trim();
+    }
+
+    private void appendOptionalLine(StringBuilder context, String label, String value) {
+        if (value != null && !value.isBlank()) {
+            context.append(label).append(": ").append(value).append('\n');
+        }
+    }
+
+    private void appendOptionalList(StringBuilder context, String label, List<String> values) {
+        if (values == null || values.isEmpty()) {
+            return;
+        }
+        context.append(label).append(':').append('\n');
+        for (String value : values) {
+            if (value != null && !value.isBlank()) {
+                context.append("- ").append(value).append('\n');
+            }
+        }
     }
 }

@@ -1,0 +1,12 @@
+projects:
+  - name: "ZEP Migration"
+    description: "Migration of the legacy ZEP integration to a Quarkus-based plausibility checking service."
+    techStack: "Java, Quarkus, LangChain4j, Maven, ZEP REST API"
+    bookingRules:
+      - "Travel between Wien and Graz is usually booked as passive travel (Beifahrt)."
+      - "Code review work is booked under review-focused project tasks."
+      - "On-site customer work should not be booked as Homeoffice."
+    commonMistakes:
+      - "Ruckfahrt text copied into a Hinreise day."
+      - "Customer workshop booked with an internal-only note."
+      - "Generic meeting note without the customer context."
