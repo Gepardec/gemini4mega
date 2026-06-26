@@ -4,10 +4,15 @@ import com.gepardec.llm.service.PromptService;
 import com.gepardec.model.LLMAttendance;
 import com.gepardec.zep.model.Attendance;
 import com.gepardec.zep.model.EmployeeProject;
+import com.gepardec.zep.service.ActivityService;
 import com.gepardec.zep.service.AttendanceService;
+import com.gepardec.zep.service.ProjectDescriptionService;
 import com.gepardec.zep.service.PseudonymizationService;
 import com.gepardec.zep.service.ProjectService;
 import com.gepardec.zep.service.ProjectTaskService;
+import com.gepardec.zep.service.SubtaskService;
+import com.gepardec.zep.service.TicketSubtaskKey;
+import com.gepardec.zep.service.WorkLocationService;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.json.bind.JsonbBuilder;
@@ -39,6 +44,27 @@ public class AttendanceValidationAgent {
     @Inject
     ProjectTaskService projectTaskService;
 
+    @Inject
+    ActivityService activityService;
+
+    @Inject
+    WorkLocationService workLocationService;
+
+    @Inject
+    SubtaskService subtaskService;
+
+    @Inject
+    ProjectDescriptionService projectDescriptionService;
+
+    record AttendanceLookups(
+            Map<Integer, String> projectNames,
+            Map<Integer, String> taskNames,
+            Map<String, String> activityNames,
+            Map<String, String> workLocationNames,
+            Map<TicketSubtaskKey, String> subtaskNames,
+            Map<Integer, String> projectDescriptions) {
+    }
+
     public String checkSingleMonth(String username, YearMonth payrollMonth) {
         List<Attendance> attendancesOfUser = attendanceService.getAttendanceForUserAndMonth(username, payrollMonth);
         Set<Integer> projectIds = attendancesOfUser.stream()
@@ -53,10 +79,34 @@ public class AttendanceValidationAgent {
             taskNames.putAll(projectTaskService.getTaskNamesForProject(projectId));
         }
 
+        Set<String> activityIds = attendancesOfUser.stream()
+                .map(Attendance::getActivityId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        Set<String> workLocationIds = attendancesOfUser.stream()
+                .map(Attendance::getWorkLocationId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        Set<TicketSubtaskKey> subtaskKeys = attendancesOfUser.stream()
+                .filter(attendance -> attendance.getSubtaskId() != null)
+                .map(attendance -> new TicketSubtaskKey(attendance.getTicketId(), attendance.getSubtaskId()))
+                .collect(Collectors.toSet());
+
+        Map<String, String> activityNames = activityService.getActivityNames(activityIds);
+        Map<String, String> workLocationNames = workLocationService.getWorkLocationNames(workLocationIds);
+        Map<TicketSubtaskKey, String> subtaskNames = subtaskService.getSubtaskNames(subtaskKeys);
+        Map<Integer, String> projectDescriptions =
+                projectDescriptionService.getProjectDescriptions(payrollMonth, projectIds);
+
+        AttendanceLookups lookups = new AttendanceLookups(
+                projectNames, taskNames, activityNames, workLocationNames, subtaskNames, projectDescriptions);
+
         List<LLMAttendance> llmAttendances = pseudonymizationService.pseudonymize(
                         attendancesOfUser,
                         Attendance::getEmployeeId,
-                        (attendance, pseudoEmployeeId) -> mapToLLMAttendance(attendance, pseudoEmployeeId, projectNames, taskNames))
+                        (attendance, pseudoEmployeeId) -> mapToLLMAttendance(attendance, pseudoEmployeeId, lookups))
                 .stream()
                 .filter(Objects::nonNull)
                 .toList();
@@ -85,19 +135,35 @@ public class AttendanceValidationAgent {
         return projectName;
     }
 
-    private LLMAttendance mapToLLMAttendance(Attendance attendance,
-                                             String pseudoEmployeeId,
-                                             Map<Integer, String> projectNames,
-                                             Map<Integer, String> taskNames) {
+    LLMAttendance mapToLLMAttendance(Attendance attendance,
+                                     String pseudoEmployeeId,
+                                     AttendanceLookups lookups) {
         Integer projectId = attendance.getProjectId();
         Integer taskId = attendance.getProjectTaskId();
 
         String projectName = projectId == null
                 ? null
-                : projectNames.getOrDefault(projectId, "project#" + projectId);
+                : lookups.projectNames().getOrDefault(projectId, "project#" + projectId);
         String taskName = taskId == null
                 ? null
-                : taskNames.getOrDefault(taskId, "task#" + taskId);
+                : lookups.taskNames().getOrDefault(taskId, "task#" + taskId);
+
+        String activity = attendance.getActivityId() == null
+                ? null
+                : lookups.activityNames().getOrDefault(attendance.getActivityId(),
+                        "activity#" + attendance.getActivityId());
+        String workLocation = attendance.getWorkLocationId() == null
+                ? null
+                : lookups.workLocationNames().getOrDefault(attendance.getWorkLocationId(),
+                        "location#" + attendance.getWorkLocationId());
+        String subtask = attendance.getSubtaskId() == null
+                ? null
+                : lookups.subtaskNames().getOrDefault(
+                        new TicketSubtaskKey(attendance.getTicketId(), attendance.getSubtaskId()),
+                        "subtask#" + attendance.getSubtaskId());
+        String projectDescription = projectId == null
+                ? null
+                : lookups.projectDescriptions().get(projectId);
 
         return new LLMAttendance()
                 .id(attendance.getId())
@@ -107,12 +173,13 @@ public class AttendanceValidationAgent {
                 .duration(attendance.getDuration())
                 .employeeId(pseudoEmployeeId)
                 .project(projectName)
+                .projectDescription(projectDescription)
                 .projectTask(taskName)
                 .note(attendance.getNote())
                 .billable(attendance.getBillable())
-                .workLocationId(attendance.getWorkLocationId())
-                .activityId(attendance.getActivityId())
-                .subtaskId(attendance.getSubtaskId())
+                .workLocation(workLocation)
+                .activity(activity)
+                .subtask(subtask)
                 .workLocationIsProjectRelevant(attendance.getWorkLocationIsProjectRelevant())
                 .start(attendance.getStart())
                 .destination(attendance.getDestination())
