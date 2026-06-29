@@ -1,6 +1,8 @@
 package com.gepardec.zep.service;
 
 import com.gepardec.zep.api.ApiException;
+import com.gepardec.zep.model.Attendance;
+import com.gepardec.zep.model.AttendancesListResponse;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,6 +50,7 @@ public class ListResponseService {
             if (firstPageData != null) {
                 allElements.addAll(firstPageData);
                 log.info("Fetched page 1: {} elements", firstPageData.size());
+                logAttendanceProjectIdStatsIfApplicable(response, 1, firstPageData.size());
             }
 
             // Calculate total pages
@@ -65,6 +68,7 @@ public class ListResponseService {
                     if (pageData != null) {
                         allElements.addAll(pageData);
                         log.info("Fetched page {}: {} elements", page, pageData.size());
+                        logAttendanceProjectIdStatsIfApplicable(response, page, pageData.size());
                     }
                 }
             }
@@ -83,5 +87,37 @@ public class ListResponseService {
     @FunctionalInterface
     public interface ApiCallFunction<R> {
         R call() throws ApiException;
+    }
+
+    private <R> void logAttendanceProjectIdStatsIfApplicable(R response, int page, int pageSize) {
+        if (!(response instanceof AttendancesListResponse attendancesResponse)) {
+            return;
+        }
+
+        List<Attendance> attendances = attendancesResponse.getData();
+        if (attendances == null || attendances.isEmpty()) {
+            log.warn("Attendance page {} has no data payload", page);
+            return;
+        }
+
+        long nullProjectIds = attendances.stream()
+                .filter(attendance -> attendance.getProjectId() == null)
+                .count();
+        long nonNullProjectIds = attendances.size() - nullProjectIds;
+
+        log.info("Attendance page {} mapping stats: size={}, projectId non-null={}, projectId null={}",
+                page, pageSize, nonNullProjectIds, nullProjectIds);
+
+        if (log.isDebugEnabled()) {
+            String sample = attendances.stream()
+                    .limit(5)
+                    .map(attendance -> "id=" + attendance.getId()
+                            + ",projectId=" + attendance.getProjectId()
+                            + ",projectTaskId=" + attendance.getProjectTaskId()
+                            + ",directionOfTravel=" + attendance.getDirectionOfTravel())
+                    .toList()
+                    .toString();
+            log.debug("Attendance page {} sample mapping: {}", page, sample);
+        }
     }
 }

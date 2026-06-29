@@ -43,6 +43,11 @@ public class AttendanceService {
                         AttendancesListResponse::getData,
                         response -> response.getMeta() != null ? response.getMeta().getTotal() : null);
                 attendances.forEach(a -> a.employeeId(user));
+                long nullProjectIds = attendances.stream().filter(a -> a.getProjectId() == null).count();
+                log.info("Fetched {} attendances for user={} month={} (projectId non-null={}, projectId null={})",
+                        attendances.size(), user, payrollMonth, attendances.size() - nullProjectIds, nullProjectIds);
+
+                System.out.println(                attendancesApi.attendancesGet(startDate, endDate, user, MAX_LIMIT).getData().getFirst().getProjectId() + "LAAAASAAAAAAAAAAA");
                 return attendances;
             } catch (Exception e) {
                 log.error("Error fetching attendances", e);

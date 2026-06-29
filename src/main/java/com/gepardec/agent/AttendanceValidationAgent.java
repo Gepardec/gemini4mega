@@ -20,6 +20,8 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.json.bind.JsonbBuilder;
 import jakarta.json.bind.JsonbConfig;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.YearMonth;
 import java.util.HashMap;
@@ -31,6 +33,8 @@ import java.util.stream.Collectors;
 
 @ApplicationScoped
 public class AttendanceValidationAgent {
+
+    private static final Logger log = LoggerFactory.getLogger(AttendanceValidationAgent.class);
 
     @Inject
     PromptService promptService;
@@ -65,6 +69,9 @@ public class AttendanceValidationAgent {
     @Inject
     ProjectMetadataService projectMetadataService;
 
+    private static final String UNKNOWN_PROJECT = "project#unknown";
+    private static final String UNKNOWN_TASK = "task#unknown";
+
 
     record AttendanceLookups(
             Map<Integer, String> projectNames,
@@ -81,6 +88,10 @@ public class AttendanceValidationAgent {
                 .map(Attendance::getProjectId)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
+
+        System.out.println(projectIds.toString() + " projectids");
+        System.out.println(projectIds.size() + "projectids size");
+
 
         Map<Integer, String> projectNames = resolveProjectNames(username, payrollMonth, projectIds);
 
@@ -130,28 +141,34 @@ public class AttendanceValidationAgent {
 
         List<ProjectMetadata> projectMetadata = projectMetadataService.getMetadataForProjects(monthProjectNames);
         String projectContext = renderProjectContext(projectMetadata);
+        //return promptService.prompt(entriesJson, projectContext);
         //return promptService.prompt(entriesJson, systemPromptLoader.getSystemPrompt());
 
-        return promptService.prompt(entriesJson, projectContext);
+        //temp to save tokens
+        return "";
     }
 
     private Map<Integer, String> resolveProjectNames(String username, YearMonth payrollMonth, Set<Integer> projectIds) {
-        return projectService.getProjectsForUserAndMonth(username, payrollMonth).stream()
-                .filter(project -> project.getProjectId() != null)
-                .filter(project -> projectIds.contains(project.getProjectId()))
-                .collect(Collectors.toMap(
-                        EmployeeProject::getProjectId,
-                        project -> projectNameOrFallback(project),
-                        (existing, replacement) -> existing
-                ));
-    }
+        Map<Integer, String> resolvedProjectNames = projectService.getProjectNamesByIds(projectIds);
 
-    private String projectNameOrFallback(EmployeeProject project) {
-        String projectName = project.getProjectName();
-        if (projectName == null || projectName.isBlank()) {
-            return "project#" + project.getProjectId();
+        Set<Integer> missingProjectIds = projectIds.stream()
+                .filter(id -> !resolvedProjectNames.containsKey(id))
+                .collect(Collectors.toSet());
+
+        if (missingProjectIds.isEmpty()) {
+            log.info("Project mapping check OK for user={} month={}: mapped {} distinct projectIds",
+                    username, payrollMonth, resolvedProjectNames.size());
+        } else {
+            log.warn("Project mapping check for user={} month={}: {} of {} projectIds are missing names: {}",
+                    username, payrollMonth, missingProjectIds.size(), projectIds.size(), missingProjectIds);
         }
-        return projectName;
+
+        if (log.isDebugEnabled()) {
+            log.debug("Resolved projectId -> projectName map for user={} month={}: {}",
+                    username, payrollMonth, resolvedProjectNames);
+        }
+
+        return resolvedProjectNames;
     }
 
     LLMAttendance mapToLLMAttendance(Attendance attendance,
@@ -161,10 +178,10 @@ public class AttendanceValidationAgent {
         Integer taskId = attendance.getProjectTaskId();
 
         String projectName = projectId == null
-                ? null
+                ? UNKNOWN_PROJECT
                 : lookups.projectNames().getOrDefault(projectId, "project#" + projectId);
         String taskName = taskId == null
-                ? null
+                ? UNKNOWN_TASK
                 : lookups.taskNames().getOrDefault(taskId, "task#" + taskId);
 
         String activity = attendance.getActivityId() == null
