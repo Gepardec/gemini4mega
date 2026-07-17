@@ -39,9 +39,9 @@ public class CheckingController {
             YearMonth yearMonth = YearMonth.of(year, month);
             log.info("Starting validation for user={}, year={}, month={}", user, year, month);
 
-            ValidationResult result = attendanceValidationAgent.checkSingleMonth(user, yearMonth);
+            String result = attendanceValidationAgent.checkSingleMonth(user, yearMonth);
 
-            log.info("Validation completed for user={}, valid={}", user, result.getValid());
+//            log.info("Validation completed for user={}, valid={}", user, result.getValid());
 
             return Response.ok(result).build();
 

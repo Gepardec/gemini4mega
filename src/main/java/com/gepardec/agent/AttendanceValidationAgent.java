@@ -4,6 +4,7 @@ import com.gepardec.agent.util.SystemPromptLoader;
 import com.gepardec.llm.service.LLMResponseParser;
 import com.gepardec.llm.service.PromptService;
 import com.gepardec.model.LLMAttendance;
+import com.gepardec.model.ProjectMetadata;
 import com.gepardec.model.ValidationResult;
 import com.gepardec.zep.model.Attendance;
 import com.gepardec.zep.service.ActivityService;
@@ -85,7 +86,7 @@ public class AttendanceValidationAgent {
             Map<Integer, String> projectDescriptions) {
     }
 
-    public ValidationResult checkSingleMonth(String username, YearMonth payrollMonth) {
+    public String checkSingleMonth(String username, YearMonth payrollMonth) {
         List<Attendance> attendancesOfUser = attendanceService.getAttendanceForUserAndMonth(username, payrollMonth);
 
         // Log attendancesOfUser as JSON
@@ -147,16 +148,18 @@ public class AttendanceValidationAgent {
         log.info("Sending {} attendance entries to LLM for validation (user={}, month={})",
                 llmAttendances.size(), username, payrollMonth);
 
-        String rawResponse = promptService.prompt(entriesJson, systemPromptLoader.getSystemPrompt());
+        List<ProjectMetadata> projectMetadata = projectMetadataService.getMetadataForProjects(monthProjectNames);
+//        String rawResponse = promptService.prompt(entriesJson, systemPromptLoader.getSystemPrompt() + renderProjectContext(projectMetadata));
+        return promptService.prompt(entriesJson, systemPromptLoader.getSystemPrompt() + renderProjectContext(projectMetadata));
 
-        log.debug("Received LLM response, parsing...");
-        ValidationResult validationResult = llmResponseParser.parse(rawResponse, llmAttendances);
+//        log.debug("Received LLM response, parsing...");
+//        ValidationResult validationResult = llmResponseParser.parse(rawResponse, llmAttendances);
+//
+//        log.info("Validation completed for user={} month={}: valid={}, errors={}",
+//                username, payrollMonth, validationResult.getValid(),
+//                validationResult.getErrors() != null ? validationResult.getErrors().size() : 0);
 
-        log.info("Validation completed for user={} month={}: valid={}, errors={}",
-                username, payrollMonth, validationResult.getValid(),
-                validationResult.getErrors() != null ? validationResult.getErrors().size() : 0);
-
-        return validationResult;
+//        return validationResult;
     }
 
     private Map<Integer, String> resolveProjectNames(String username, YearMonth payrollMonth, Set<Integer> projectIds) {
@@ -231,5 +234,40 @@ public class AttendanceValidationAgent {
                 .start(attendance.getStart())
                 .destination(attendance.getDestination())
                 .directionOfTravel(attendance.getDirectionOfTravel());
+    }
+
+    private String renderProjectContext(List<ProjectMetadata> metadataEntries) {
+        if (metadataEntries == null || metadataEntries.isEmpty()) {
+            return "";
+        }
+
+        StringBuilder context = new StringBuilder();
+        for (ProjectMetadata metadata : metadataEntries) {
+            context.append("Project: ").append(metadata.getName()).append('\n');
+            appendOptionalLine(context, "Description", metadata.getDescription());
+            appendOptionalLine(context, "Tech stack", metadata.getTechStack());
+            appendOptionalList(context, "Booking rules", metadata.getBookingRules());
+            appendOptionalList(context, "Common mistakes", metadata.getCommonMistakes());
+            context.append('\n');
+        }
+        return context.toString().trim();
+    }
+
+    private void appendOptionalLine(StringBuilder context, String label, String value) {
+        if (value != null && !value.isBlank()) {
+            context.append(label).append(": ").append(value).append('\n');
+        }
+    }
+
+    private void appendOptionalList(StringBuilder context, String label, List<String> values) {
+        if (values == null || values.isEmpty()) {
+            return;
+        }
+        context.append(label).append(':').append('\n');
+        for (String value : values) {
+            if (value != null && !value.isBlank()) {
+                context.append("- ").append(value).append('\n');
+            }
+        }
     }
 }
